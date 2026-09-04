@@ -132,6 +132,20 @@ aws lambda update-function-configuration \
 ```
 
 ### 2. Deploy `notification-service` (AWS Lambda 2)
+```
+aws sns create-topic \
+  --name aethercart-notifications \
+  --region ap-south-1
+```
+```
+aws lambda create-function \
+  --function-name shopitry-notification-service \
+  --runtime nodejs20.x \
+  --role arn:aws:iam::897013207591:role/ShopiTryLambdaRole \
+  --handler src/handler.handler \
+  --zip-file fileb://notification-service.zip \
+  --region us-east-1
+```
 
 ```bash
 # Navigate to notification service
