@@ -81,7 +81,7 @@ aws iam create-role \
       {
         "Effect": "Allow",
         "Principal": {
-          "Service": "://amazonaws.com"
+          "Service": "lambda.amazonaws.com"
         },
         "Action": "sts:AssumeRole"
       }
