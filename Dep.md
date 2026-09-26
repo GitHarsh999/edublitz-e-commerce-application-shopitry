@@ -219,10 +219,10 @@ npm install --omit=dev
 cat <<EOT > .env
 PORT=5000
 JWT_SECRET=shopitry_super_secret_jwt_key_2026
-CATALOG_SERVICE_URL=http://3.111.40.44:5001
-CART_SERVICE_URL=http://13.232.28.163:5002
-ORDER_SERVICE_URL=http://15.207.14.255:5003
-PAYMENT_SERVICE_URL=https:https://o7kgusixzf2i2xvjltcswfdua40ajzou.lambda-url.ap-south-1.on.aws/
+CATALOG_SERVICE_URL=http://172.31.11.150:5001
+CART_SERVICE_URL=http://172.31.6.16:5002
+ORDER_SERVICE_URL=http://172.31.8.239:5003
+PAYMENT_SERVICE_URL=https:https:https://aa66b2scxqimldscguhv2nn3pu0fakvq.lambda-url.ap-south-1.on.aws/
 NOTIFICATION_SERVICE_URL=https://zflaqgskqzblauthh2mu4kdnzm0cugck.lambda-url.ap-south-1.on.aws/
 EOT
 
