@@ -133,8 +133,8 @@ cat > .env <<'EOF'
 PORT=5003
 MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:<mongodb-password>@edublitz.cjqyufm.mongodb.net/orders_db?retryWrites=true&w=majority
 CART_SERVICE_URL=http://172.31.6.16:5002
-PAYMENT_SERVICE_URL=https://aa66b2scxqimldscguhv2nn3pu0fakvq.lambda-url.ap-south-1.on.aws
-NOTIFICATION_SERVICE_URL=https://wlkafs774l4jdbk22tpydsrjsq0vwplv.lambda-url.ap-south-1.on.aws
+PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws
+NOTIFICATION_SERVICE_URL=https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws
 EOF
 pm2 start src/index.js --name order-service
 pm2 save
@@ -159,8 +159,8 @@ JWT_SECRET=<long-random-secret>
 CATALOG_SERVICE_URL=http://172.31.11.150:5001
 CART_SERVICE_URL=http://172.31.6.16:5002
 ORDER_SERVICE_URL=http://172.31.8.239:5003
-PAYMENT_SERVICE_URL=https://aa66b2scxqimldscguhv2nn3pu0fakvq.lambda-url.ap-south-1.on.aws
-NOTIFICATION_SERVICE_URL=https://wlkafs774l4jdbk22tpydsrjsq0vwplv.lambda-url.ap-south-1.on.aws
+PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws
+NOTIFICATION_SERVICE_URL=https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws
 EOF
 pm2 start src/index.js --name gateway-service
 pm2 save
@@ -254,6 +254,14 @@ aws lambda add-permission \
   --function-url-auth-type NONE \
   --region "$AWS_REGION"
 
+aws lambda add-permission \
+  --function-name shopitry-payment-service \
+  --statement-id FunctionURLInvokeAllowPublicAccess \
+  --action lambda:InvokeFunction \
+  --principal '*' \
+  --invoked-via-function-url \
+  --region "$AWS_REGION"
+
 aws lambda create-function-url-config \
   --function-name shopitry-notification-service \
   --auth-type NONE \
@@ -268,6 +276,14 @@ aws lambda add-permission \
   --function-url-auth-type NONE \
   --region "$AWS_REGION"
 
+aws lambda add-permission \
+  --function-name shopitry-notification-service \
+  --statement-id FunctionURLInvokeAllowPublicAccess \
+  --action lambda:InvokeFunction \
+  --principal '*' \
+  --invoked-via-function-url \
+  --region "$AWS_REGION"
+
 aws lambda get-function-url-config \
   --function-name shopitry-payment-service --region "$AWS_REGION"
 aws lambda get-function-url-config \
@@ -275,6 +291,8 @@ aws lambda get-function-url-config \
 ```
 
 Use the returned URLs in the gateway and order-service `.env` files as shown above. If a Function URL already exists, use `update-function-url-config` instead of `create-function-url-config`.
+
+For Lambda Function URLs created through the AWS CLI, both invocation permissions are required. If the URL was already created, run these missing-permission commands before testing:
 
 ### 8.4 Create the SNS topic and connect notification Lambda
 
@@ -312,11 +330,11 @@ aws sns list-subscriptions-by-topic \
 Test them directly before testing checkout:
 
 ```bash
-curl -i -X POST "https://aa66b2scxqimldscguhv2nn3pu0fakvq.lambda-url.ap-south-1.on.aws/api/payments/process" \
+curl -i -X POST "https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws/api/payments/process" \
   -H "Content-Type: application/json" \
   -d '{"orderId":"test-order","amount":10,"currency":"USD","paymentMethod":"Card"}'
 
-curl -i -X POST "https://wlkafs774l4jdbk22tpydsrjsq0vwplv.lambda-url.ap-south-1.on.aws/api/notifications/send" \
+curl -i -X POST "https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws/api/notifications/send" \
   -H "Content-Type: application/json" \
   -d '{"type":"ORDER_CONFIRMATION","recipientEmail":"test@example.com","orderId":"test-order","totalAmount":10}'
 ```
