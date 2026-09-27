@@ -171,14 +171,143 @@ The current gateway CORS middleware allows cross-origin requests. The gateway mu
 
 ## 8. Deploy Lambda Functions
 
-Deploy these existing handlers with Node.js 20:
+### 8.1 Create the Lambda execution role
 
-```text
-backend/payment-service/src/handler.handler
-backend/notification-service/src/handler.handler
+Run these commands once from a workstation with AWS CLI credentials that can manage IAM, Lambda, and SNS:
+
+```bash
+export AWS_REGION=ap-south-1
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+cat > lambda-trust-policy.json <<'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "lambda.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+aws iam create-role \
+  --role-name ShopiTryLambdaRole \
+  --assume-role-policy-document file://lambda-trust-policy.json
+
+aws iam attach-role-policy \
+  --role-name ShopiTryLambdaRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+export LAMBDA_ROLE_ARN=arn:aws:iam::$AWS_ACCOUNT_ID:role/ShopiTryLambdaRole
 ```
 
-Create a Lambda Function URL for each function with authentication type `NONE`, then add the required public resource policy. Put the exact HTTPS URLs in the gateway and order-service `.env` files.
+If the role already exists, skip `create-role` and keep the existing role ARN. Wait briefly after creating the role before creating Lambda functions so IAM has time to propagate.
+
+### 8.2 Package and create the Lambda functions
+
+Run the following separately for each service:
+
+```bash
+cd backend/payment-service
+npm install --omit=dev
+zip -r payment-service.zip src node_modules package.json
+aws lambda create-function \
+  --function-name shopitry-payment-service \
+  --runtime nodejs20.x \
+  --role "$LAMBDA_ROLE_ARN" \
+  --handler src/handler.handler \
+  --zip-file fileb://payment-service.zip \
+  --region "$AWS_REGION"
+
+cd ../notification-service
+npm install --omit=dev
+zip -r notification-service.zip src node_modules package.json
+aws lambda create-function \
+  --function-name shopitry-notification-service \
+  --runtime nodejs20.x \
+  --role "$LAMBDA_ROLE_ARN" \
+  --handler src/handler.handler \
+  --zip-file fileb://notification-service.zip \
+  --region "$AWS_REGION"
+```
+
+If either function already exists, use `aws lambda update-function-code` instead of `create-function`.
+
+### 8.3 Create Lambda Function URLs
+
+The gateway and order service call these HTTPS URLs. They are not EC2 ports 5004 or 5005.
+
+```bash
+aws lambda create-function-url-config \
+  --function-name shopitry-payment-service \
+  --auth-type NONE \
+  --cors '{"AllowOrigins":["*"],"AllowMethods":["POST"],"AllowHeaders":["content-type"]}' \
+  --region "$AWS_REGION"
+
+aws lambda add-permission \
+  --function-name shopitry-payment-service \
+  --statement-id FunctionURLAllowPublicAccess \
+  --action lambda:InvokeFunctionUrl \
+  --principal '*' \
+  --function-url-auth-type NONE \
+  --region "$AWS_REGION"
+
+aws lambda create-function-url-config \
+  --function-name shopitry-notification-service \
+  --auth-type NONE \
+  --cors '{"AllowOrigins":["*"],"AllowMethods":["POST"],"AllowHeaders":["content-type"]}' \
+  --region "$AWS_REGION"
+
+aws lambda add-permission \
+  --function-name shopitry-notification-service \
+  --statement-id FunctionURLAllowPublicAccess \
+  --action lambda:InvokeFunctionUrl \
+  --principal '*' \
+  --function-url-auth-type NONE \
+  --region "$AWS_REGION"
+
+aws lambda get-function-url-config \
+  --function-name shopitry-payment-service --region "$AWS_REGION"
+aws lambda get-function-url-config \
+  --function-name shopitry-notification-service --region "$AWS_REGION"
+```
+
+Use the returned URLs in the gateway and order-service `.env` files as shown above. If a Function URL already exists, use `update-function-url-config` instead of `create-function-url-config`.
+
+### 8.4 Create the SNS topic and connect notification Lambda
+
+The notification handler can be called through its Function URL, and this SNS subscription also allows SNS to invoke it for notification events:
+
+```bash
+export SNS_TOPIC_ARN=$(aws sns create-topic \
+  --name aethercart-notifications \
+  --region "$AWS_REGION" \
+  --query TopicArn --output text)
+
+aws sns subscribe \
+  --topic-arn "$SNS_TOPIC_ARN" \
+  --protocol lambda \
+  --notification-endpoint "arn:aws:lambda:$AWS_REGION:$AWS_ACCOUNT_ID:function:shopitry-notification-service" \
+  --region "$AWS_REGION"
+
+aws lambda add-permission \
+  --function-name shopitry-notification-service \
+  --statement-id AllowSnsInvoke \
+  --action lambda:InvokeFunction \
+  --principal sns.amazonaws.com \
+  --source-arn "$SNS_TOPIC_ARN" \
+  --region "$AWS_REGION"
+```
+
+Confirm the subscription:
+
+```bash
+aws sns list-subscriptions-by-topic \
+  --topic-arn "$SNS_TOPIC_ARN" \
+  --region "$AWS_REGION"
+```
 
 Test them directly before testing checkout:
 
@@ -223,6 +352,36 @@ aws s3 sync dist/ s3://shopitry-admin-prod1 --delete
 ```
 
 Configure each bucket for public website reads with a bucket policy allowing `s3:GetObject` on `arn:aws:s3:::<bucket>/*`. If Object Ownership is `BucketOwnerEnforced`, do not use `--acl public-read`.
+
+For this direct S3 website setup, run the following after creating both buckets. This intentionally makes the website objects public; do not use this pattern for private data buckets.
+
+```bash
+for BUCKET in shopitry-storefront-prod1 shopitry-admin-prod1; do
+  aws s3api put-public-access-block \
+    --bucket "$BUCKET" \
+    --public-access-block-configuration \
+    BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false \
+    --region ap-south-1
+
+  cat > /tmp/${BUCKET}-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "PublicReadForWebsite",
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "s3:GetObject",
+    "Resource": "arn:aws:s3:::$BUCKET/*"
+  }]
+}
+EOF
+
+  aws s3api put-bucket-policy \
+    --bucket "$BUCKET" \
+    --policy file:///tmp/${BUCKET}-policy.json \
+    --region ap-south-1
+done
+```
 
 Open the S3 website endpoint, not the REST bucket endpoint:
 

@@ -9,6 +9,9 @@ exports.handler = async (event, context) => {
     let body = {};
     if (event.body) {
       body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    } else if (event.Records && event.Records[0]?.Sns?.Message) {
+      const message = event.Records[0].Sns.Message;
+      body = typeof message === 'string' ? JSON.parse(message) : message;
     } else {
       body = event;
     }
