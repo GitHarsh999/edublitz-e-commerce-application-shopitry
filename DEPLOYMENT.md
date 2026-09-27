@@ -89,7 +89,7 @@ sudo apt install -y nodejs
 sudo npm install --global pm2
 sudo mkdir -p /var/www/shopitry
 sudo chown -R "$USER":"$USER" /var/www/shopitry
-git clone <repository-url> /var/www/shopitry
+git clone  https://github.com/GitHarsh999/edublitz-e-commerce-application-shopitry/ /var/www/shopitry
 ```
 
 Replace `<repository-url>` with the repository URL. Do not place `.env` files in the repository.
@@ -103,7 +103,7 @@ cd /var/www/shopitry/backend/catalog-service
 npm install --omit=dev
 cat > .env <<'EOF'
 PORT=5001
-MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:<mongodb-password>@edublitz.cjqyufm.mongodb.net/catalog_db?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:o7jGIfMnjqD7DcYm@edublitz.cjqyufm.mongodb.net/catalog_db?retryWrites=true&w=majority
 EOF
 pm2 start src/index.js --name catalog-service
 pm2 save
@@ -116,7 +116,7 @@ cd /var/www/shopitry/backend/cart-service
 npm install --omit=dev
 cat > .env <<'EOF'
 PORT=5002
-MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:<mongodb-password>@edublitz.cjqyufm.mongodb.net/cart_db?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:o7jGIfMnjqD7DcYm@edublitz.cjqyufm.mongodb.net/cart_db?retryWrites=true&w=majority
 EOF
 pm2 start src/index.js --name cart-service
 pm2 save
@@ -131,8 +131,8 @@ cd /var/www/shopitry/backend/order-service
 npm install --omit=dev
 cat > .env <<'EOF'
 PORT=5003
-MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:<mongodb-password>@edublitz.cjqyufm.mongodb.net/orders_db?retryWrites=true&w=majority
-CART_SERVICE_URL=http://172.31.6.16:5002
+MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:o7jGIfMnjqD7DcYm@edublitz.cjqyufm.mongodb.net/orders_db?retryWrites=true&w=majority
+CART_SERVICE_URL=http://172.31.4.86:5002
 PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws
 NOTIFICATION_SERVICE_URL=https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws
 EOF
@@ -156,10 +156,10 @@ npm install --omit=dev
 cat > .env <<'EOF'
 PORT=5000
 JWT_SECRET=<long-random-secret>
-CATALOG_SERVICE_URL=http://172.31.11.150:5001
-CART_SERVICE_URL=http://172.31.6.16:5002
-ORDER_SERVICE_URL=http://172.31.8.239:5003
-PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws
+CATALOG_SERVICE_URL=http://172.31.15.190:5001
+CART_SERVICE_URL=http://172.31.4.86:5002
+ORDER_SERVICE_URL=http://172.31.4.36:5003
+PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws  
 NOTIFICATION_SERVICE_URL=https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws
 EOF
 pm2 start src/index.js --name gateway-service
@@ -349,7 +349,7 @@ Run from your workstation:
 
 ```bash
 cd frontend/storefront
-Set-Content .env.production 'VITE_API_GATEWAY_URL=http://<gateway-elastic-ip>:5000'
+Set-Content .env.production 'VITE_API_GATEWAY_URL=http://13.127.220.250:5000'
 npm install
 npm run build
 aws s3 mb s3://shopitry-storefront-prod1 --region ap-south-1
@@ -360,8 +360,9 @@ aws s3 sync dist/ s3://shopitry-storefront-prod1 --delete
 ### Admin dashboard
 
 ```bash
+
 cd frontend/admin-dashboard
-Set-Content .env.production 'VITE_API_GATEWAY_URL=http://<gateway-elastic-ip>:5000'
+Set-Content .env.production 'VITE_API_GATEWAY_URL=http://13.127.220.250:5000'
 npm install
 npm run build
 aws s3 mb s3://shopitry-admin-prod1 --region ap-south-1
@@ -433,7 +434,7 @@ Only the matching local port is expected to work on each instance.
 From the gateway instance:
 
 ```bash
-curl -i http://172.31.11.150:5001/health
+curl -i http://172.31.11.15:5001/health
 curl -i http://172.31.6.16:5002/health
 curl -i http://172.31.8.239:5003/health
 curl -i http://localhost:5000/health
