@@ -30,7 +30,7 @@ Use one AWS region for EC2 and Lambda. Assign an Elastic IP to the gateway so it
 
 ```bash
 export AWS_REGION=ap-south-1
-export GATEWAY_IP=<gateway-elastic-ip>
+export GATEWAY_IP=<gateway-elastic-ip> 
 export STOREFRONT_BUCKET=shopitry-storefront-prod1
 export ADMIN_BUCKET=shopitry-admin-prod1
 ```
