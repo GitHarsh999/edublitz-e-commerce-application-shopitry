@@ -44,6 +44,13 @@ if (process.env.MONGODB_URI) {
       console.log('✅ Connected to MongoDB Atlas for Catalog Service');
       ProductModel = mongoose.model('Product', productSchema);
       isMongoConnected = true;
+      return ProductModel.countDocuments();
+    })
+    .then(async (productCount) => {
+      if (productCount === 0) {
+        await ProductModel.insertMany(seedProducts);
+        console.log(`✅ Seeded ${seedProducts.length} products into MongoDB`);
+      }
     })
     .catch((err) => {
       console.warn('⚠️  MongoDB connection deferred. Operating in High-Performance In-Memory Mode.');

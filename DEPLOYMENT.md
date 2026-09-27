@@ -30,7 +30,7 @@ Use one AWS region for EC2 and Lambda. Assign an Elastic IP to the gateway so it
 
 ```bash
 export AWS_REGION=ap-south-1
-export GATEWAY_IP=<gateway-elastic-ip> 
+export GATEWAY_IP=13.127.220.250
 export STOREFRONT_BUCKET=shopitry-storefront-prod1
 export ADMIN_BUCKET=shopitry-admin-prod1
 ```
@@ -131,7 +131,7 @@ cd /var/www/shopitry/backend/order-service
 npm install --omit=dev
 cat > .env <<'EOF'
 PORT=5003
-MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:o7jGIfMnjqD7DcYm@edublitz.cjqyufm.mongodb.net/orders_db?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://naganeharshwardhan64_db_user:<mongodb-password>@edublitz.cjqyufm.mongodb.net/orders_db?retryWrites=true&w=majority
 CART_SERVICE_URL=http://172.31.4.86:5002
 PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws
 NOTIFICATION_SERVICE_URL=https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws
@@ -159,7 +159,7 @@ JWT_SECRET=<long-random-secret>
 CATALOG_SERVICE_URL=http://172.31.15.190:5001
 CART_SERVICE_URL=http://172.31.4.86:5002
 ORDER_SERVICE_URL=http://172.31.4.36:5003
-PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws  
+PAYMENT_SERVICE_URL=https://hptzrap27cpwdjxflrkdfqtphm0uqspo.lambda-url.ap-south-1.on.aws
 NOTIFICATION_SERVICE_URL=https://d34ysjxlvlocbdha54zhr73whe0qdcof.lambda-url.ap-south-1.on.aws
 EOF
 pm2 start src/index.js --name gateway-service
@@ -349,7 +349,7 @@ Run from your workstation:
 
 ```bash
 cd frontend/storefront
-Set-Content .env.production 'VITE_API_GATEWAY_URL=http://13.127.220.250:5000'
+echo "VITE_API_GATEWAY_URL=http://13.127.220.250:5000" > .env.production
 npm install
 npm run build
 aws s3 mb s3://shopitry-storefront-prod1 --region ap-south-1
@@ -362,13 +362,30 @@ aws s3 sync dist/ s3://shopitry-storefront-prod1 --delete
 ```bash
 
 cd frontend/admin-dashboard
-Set-Content .env.production 'VITE_API_GATEWAY_URL=http://13.127.220.250:5000'
+echo "VITE_API_GATEWAY_URL=http://13.127.220.250:5000" > .env.production
 npm install
 npm run build
 aws s3 mb s3://shopitry-admin-prod1 --region ap-south-1
 aws s3 website s3://shopitry-admin-prod1 --index-document index.html --error-document index.html
 aws s3 sync dist/ s3://shopitry-admin-prod1 --delete
 ```
+
+
+
+```
+if products are not showing then add them via admin dashbord as  
+Use these product values in Admin Dashboard → Product Catalog → Create Product SKU.
+
+Name	Price	Category	Stock	Image URL
+NovaSound Wireless Earbuds	79.99	Audio	80	https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?auto=format&fit=crop&w=800&q=80
+
+- you can used your own product image url from internet and add it.
+
+```
+
+------------------------------------------------------------------------------------------------------------------------
+
+If you dont know how to make bucket public manually then use following way->
 
 Configure each bucket for public website reads with a bucket policy allowing `s3:GetObject` on `arn:aws:s3:::<bucket>/*`. If Object Ownership is `BucketOwnerEnforced`, do not use `--acl public-read`.
 
@@ -410,12 +427,6 @@ http://<bucket>.s3-website-<aws-region>.amazonaws.com
 
 The page and API are both HTTP in this no-SSL setup. Opening an HTTPS page while calling an HTTP API causes browser mixed-content blocking.
 
-For Linux/macOS build machines, replace the PowerShell environment-file command with:
-
-```bash
-echo "VITE_API_GATEWAY_URL=http://<gateway-elastic-ip>:5000" > .env.production
-```
-
 ## 10. Verification
 
 Run checks in this order.
@@ -434,9 +445,9 @@ Only the matching local port is expected to work on each instance.
 From the gateway instance:
 
 ```bash
-curl -i http://172.31.11.15:5001/health
-curl -i http://172.31.6.16:5002/health
-curl -i http://172.31.8.239:5003/health
+curl -i http://172.31.15.190:5001/health
+curl -i http://172.31.4.86:5002/health
+curl -i http://172.31.4.36:5003/health
 curl -i http://localhost:5000/health
 curl -i http://localhost:5000/api/catalog/products
 ```
@@ -444,9 +455,9 @@ curl -i http://localhost:5000/api/catalog/products
 From your workstation:
 
 ```bash
-curl -i http://<gateway-elastic-ip>:5000/health
-curl -i http://<gateway-elastic-ip>:5000/api/catalog/products
-curl -i -X POST http://<gateway-elastic-ip>:5000/api/auth/login \
+curl -i http://13.127.220.250:5000/health
+curl -i http://13.127.220.250:5000/api/catalog/products
+curl -i -X POST http://13.127.220.250:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@shopitry.com","password":"adminpassword123"}'
 ```
@@ -466,7 +477,7 @@ A gateway 503 means it could not connect to a downstream service. Check the priv
 In browser developer tools, the request URL must be:
 
 ```text
-http://<gateway-elastic-ip>:5000/api/catalog/products
+http://13.127.220.250:5000/api/catalog/products
 ```
 
 Interpret failures as follows:
@@ -486,3 +497,104 @@ After changing `VITE_API_GATEWAY_URL`, rebuild and sync both `dist/` directories
 - Restrict SSH to the command-center security group or administrator IP.
 - Keep private service ports closed to the internet.
 - Add HTTPS and a CDN before real customer use.
+
+## 13. Deployment Mistakes and Permanent Fixes
+
+These were the issues found during the first deployment. They are recorded here so the same failure is not misdiagnosed next time.
+
+### Frontend used the wrong gateway URL
+
+The frontend initially used `http://localhost:5000`. In a browser, `localhost` means the customer's computer, not the gateway EC2. One EC2 build also contained the malformed URL `http:/13.127.220.250:5000` with only one slash.
+
+**Fix:** set the Vite variable before every production build and verify the generated bundle:
+
+```bash
+echo "VITE_API_GATEWAY_URL=http://13.127.220.250:5000" > .env.production
+npm run build
+grep -R -F "http://13.127.220.250:5000" dist/assets
+grep -R -F "localhost:5000" dist/assets || true
+aws s3 sync dist/ s3://<correct-bucket> --delete
+```
+
+The browser must call the public gateway IP. Private `172.31.x.x` addresses belong only in backend `.env` files.
+
+### Backend health was tested from the wrong machine
+
+`curl.exe` is a Windows command and is unavailable on Ubuntu. Testing `localhost` on the gateway proves only that the service is running locally; it does not prove browser access.
+
+**Fix:** use `curl` on Ubuntu and test the public IP from an external Windows machine:
+
+```bash
+curl -i http://localhost:5000/health
+```
+
+```text
+curl.exe -i http://13.127.220.250:5000/health
+```
+
+Both must return HTTP 200.
+
+### MongoDB credentials were invalid
+
+The catalog service reported `bad auth: authentication failed` and fell back to in-memory data.
+
+**Fix:** reset or create the Atlas database user, use a correct URL-encoded password, test the URI directly, then restart with `pm2 restart catalog-service --update-env`.
+
+### MongoDB was connected but the catalog database was empty
+
+After authentication was fixed, the service correctly switched from seed memory to MongoDB. Because `catalog_db` contained no product documents, the API returned HTTP 200 with an empty `data` array.
+
+**Fix:** seed the database once during initial provisioning, or deploy the catalog startup-seeding code. After the initial bootstrap, products should be created through the Admin Dashboard and stored in MongoDB.
+
+### EC2 code was older than the workspace code
+
+The workspace contained frontend and catalog fixes, but the EC2 copy did not contain all of them. For example, `grep -n "Seeded" src/index.js` returned no result on EC2.
+
+**Fix:** deploy the changed source files to EC2 before restarting PM2, then verify the deployed file with `grep` or `git diff`. A local workspace edit does not change an already-cloned EC2 copy.
+
+### PM2 processes were started more than once
+
+`pm2 start` returned `Script already launched` because the process already existed.
+
+**Fix:** use the existing process name and refresh its environment:
+
+```bash
+pm2 restart catalog-service --update-env
+pm2 restart gateway-service --update-env
+pm2 save
+```
+
+Run the PM2 startup command once per instance so services return after reboot.
+
+### Markdown code fences were pasted into Bash
+
+The Bash `>` prompt appeared after the closing Markdown backticks were pasted into the terminal. Bash was waiting for unfinished input; it was not an application error.
+
+**Fix:** paste only the commands inside the code block. Press `Ctrl+C` to cancel an accidental unfinished paste.
+
+### Lambda Function URLs returned HTTP 403
+
+The Function URLs were configured with `AuthType=NONE`, but AWS CLI-created URLs still required both `lambda:InvokeFunctionUrl` and `lambda:InvokeFunction` resource permissions.
+
+**Fix:** add both permission statements. The final curl tests returned HTTP 200 for payment and notification Lambdas.
+
+### S3 website hosting was incomplete
+
+Creating a bucket and syncing files does not automatically make a direct S3 website public.
+
+**Fix:** configure website hosting, disable the relevant Block Public Access settings, add a public `s3:GetObject` bucket policy, and open the S3 website endpoint rather than the REST bucket endpoint.
+
+### Final verified state
+
+The deployment is considered healthy when all of these are true:
+
+```text
+Gateway public health: HTTP 200
+Catalog health: HTTP 200 and mongoConnected=true
+Catalog products: HTTP 200 with count greater than zero
+Cart health: HTTP 200
+Order health: HTTP 200
+Payment Lambda: HTTP 200
+Notification Lambda: HTTP 200
+Frontend bundle: contains http://13.127.220.250:5000 and no localhost:5000
+```
